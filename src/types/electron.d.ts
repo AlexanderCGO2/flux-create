@@ -25,6 +25,13 @@ interface ElectronAPI {
     onExport: (callback: () => void) => void;
     removeListener: (channel: string, callback: (...args: any[]) => void) => void;
   };
+
+  // Additional methods for the main interface
+  openImage?: (callback: (event: any, filePath: string) => void) => void;
+  onVoiceToggle?: (callback: () => void) => void;
+  minimizeWindow?: () => void;
+  maximizeWindow?: () => void;
+  closeWindow?: () => void;
   
   project: {
     onNew: (callback: () => void) => void;

@@ -9,7 +9,7 @@
     "dev:next": "next dev",
     "dev:electron": "wait-on http://localhost:3000 && NODE_ENV=development electron .",
     "build": "npm run build:next && npm run build:electron",
-    "build:next": "next build && next export",
+    "build:next": "next build",
     "build:electron": "electron-builder",
     "start": "electron .",
     "dist": "npm run build && electron-builder --publish=never",

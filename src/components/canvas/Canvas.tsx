@@ -1,471 +1,263 @@
-'use client';
+'use client'
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Stage, Layer, Image as KonvaImage, Transformer, Rect, Group } from 'react-konva';
-import { motion } from 'framer-motion';
-import useImage from 'use-image';
-import Konva from 'konva';
-import { 
-  Upload, 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCw, 
-  Move, 
-  Crop,
-  Loader2 
-} from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react'
+import { Stage, Layer, Image as KonvaImage, Rect, Circle, Text, Line } from 'react-konva'
+import useImage from 'use-image'
+import Konva from 'konva'
 
 interface CanvasProps {
-  canvasState: {
-    width: number;
-    height: number;
-    scale: number;
-    image: HTMLImageElement | null;
-    layers: any[];
-    selectedLayer: string | null;
-    isLoading: boolean;
-    error: string | null;
-  };
-  onImageLoad: (imageSrc: string) => void;
-  onImageUpload: (file: File) => void;
+  imageUrl?: string | null
+  width?: number
+  height?: number
+  mode: 'select' | 'brush' | 'eraser' | 'text' | 'shape'
+  brushSize: number
+  zoom: number
+  onImageLoad?: (dimensions: { width: number; height: number }) => void
 }
 
-export function Canvas({ canvasState, onImageLoad, onImageUpload }: CanvasProps) {
-  const stageRef = useRef<Konva.Stage>(null);
-  const transformerRef = useRef<Konva.Transformer>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [tool, setTool] = useState<'select' | 'move' | 'crop' | 'zoom'>('select');
-  const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
-  const [stageScale, setStageScale] = useState(1);
-  const [isDragging, setIsDragging] = useState(false);
+interface DrawingElement {
+  id: string
+  type: 'line' | 'rect' | 'circle' | 'text'
+  points?: number[]
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  text?: string
+  stroke?: string
+  strokeWidth?: number
+  fill?: string
+}
 
-  // Handle file drag and drop
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files);
-    const imageFile = files.find(file => file.type.startsWith('image/'));
-    
-    if (imageFile) {
-      onImageUpload(imageFile);
-    }
-  }, [onImageUpload]);
+export function Canvas({ 
+  imageUrl, 
+  width = 800, 
+  height = 600, 
+  mode, 
+  brushSize,
+  zoom,
+  onImageLoad 
+}: CanvasProps) {
+  const stageRef = useRef<Konva.Stage>(null)
+  const [image] = useImage(imageUrl || '')
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [elements, setElements] = useState<DrawingElement[]>([])
+  const [currentPath, setCurrentPath] = useState<number[]>([])
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
-
-  // Handle selection
-  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.target === e.target.getStage()) {
-      setSelectedId(null);
-      return;
-    }
-    
-    const clickedOnEmpty = e.target === e.target.getStage();
-    if (clickedOnEmpty) {
-      setSelectedId(null);
-    } else {
-      setSelectedId(e.target.id());
-    }
-  }, []);
-
-  // Update transformer
   useEffect(() => {
-    if (selectedId && transformerRef.current && stageRef.current) {
-      const selectedNode = stageRef.current.findOne('#' + selectedId);
-      if (selectedNode) {
-        transformerRef.current.nodes([selectedNode]);
-        transformerRef.current.getLayer()?.batchDraw();
-      }
-    } else if (transformerRef.current) {
-      transformerRef.current.nodes([]);
-      transformerRef.current.getLayer()?.batchDraw();
+    if (image && onImageLoad) {
+      onImageLoad({ width: image.width, height: image.height })
     }
-  }, [selectedId]);
+  }, [image, onImageLoad])
 
-  // Handle zoom
-  const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
-    e.evt.preventDefault();
-    
-    const scaleBy = 1.05;
-    const stage = stageRef.current;
-    if (!stage) return;
-    
-    const oldScale = stage.scaleX();
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
-    
-    const mousePointTo = {
-      x: (pointer.x - stage.x()) / oldScale,
-      y: (pointer.y - stage.y()) / oldScale,
-    };
-    
-    const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
-    const clampedScale = Math.max(0.1, Math.min(5, newScale));
-    
-    setStageScale(clampedScale);
-    stage.scale({ x: clampedScale, y: clampedScale });
-    
-    const newPos = {
-      x: pointer.x - mousePointTo.x * clampedScale,
-      y: pointer.y - mousePointTo.y * clampedScale,
-    };
-    
-    setStagePosition(newPos);
-    stage.position(newPos);
-  }, []);
+  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (mode === 'select') return
 
-  // Tool handlers
-  const handleZoomIn = () => {
-    const newScale = Math.min(stageScale * 1.2, 5);
-    setStageScale(newScale);
-    if (stageRef.current) {
-      stageRef.current.scale({ x: newScale, y: newScale });
+    setIsDrawing(true)
+    const pos = e.target.getStage()?.getPointerPosition()
+    if (!pos) return
+
+    const newElement: DrawingElement = {
+      id: Date.now().toString(),
+      type: mode === 'brush' || mode === 'eraser' ? 'line' : mode === 'shape' ? 'rect' : 'text',
+      points: mode === 'brush' || mode === 'eraser' ? [pos.x, pos.y] : undefined,
+      x: mode !== 'brush' && mode !== 'eraser' ? pos.x : undefined,
+      y: mode !== 'brush' && mode !== 'eraser' ? pos.y : undefined,
+      width: mode === 'shape' ? 0 : undefined,
+      height: mode === 'shape' ? 0 : undefined,
+      text: mode === 'text' ? 'New Text' : undefined,
+      stroke: mode === 'eraser' ? 'white' : '#ffffff',
+      strokeWidth: brushSize,
+      fill: mode === 'shape' ? 'rgba(255, 255, 255, 0.1)' : undefined,
     }
-  };
 
-  const handleZoomOut = () => {
-    const newScale = Math.max(stageScale / 1.2, 0.1);
-    setStageScale(newScale);
-    if (stageRef.current) {
-      stageRef.current.scale({ x: newScale, y: newScale });
+    if (mode === 'brush' || mode === 'eraser') {
+      setCurrentPath([pos.x, pos.y])
     }
-  };
 
-  const handleZoomReset = () => {
-    setStageScale(1);
-    setStagePosition({ x: 0, y: 0 });
-    if (stageRef.current) {
-      stageRef.current.scale({ x: 1, y: 1 });
-      stageRef.current.position({ x: 0, y: 0 });
-    }
-  };
+    setElements([...elements, newElement])
+  }
 
-  // Voice command integration
-  useEffect(() => {
-    const handleVoiceCommand = (command: string) => {
-      const lowerCommand = command.toLowerCase();
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!isDrawing) return
+
+    const stage = e.target.getStage()
+    const point = stage?.getPointerPosition()
+    if (!point) return
+
+    if (mode === 'brush' || mode === 'eraser') {
+      const newPath = [...currentPath, point.x, point.y]
+      setCurrentPath(newPath)
       
-      if (lowerCommand.includes('zoom in')) {
-        handleZoomIn();
-      } else if (lowerCommand.includes('zoom out')) {
-        handleZoomOut();
-      } else if (lowerCommand.includes('reset zoom') || lowerCommand.includes('fit to screen')) {
-        handleZoomReset();
-      } else if (lowerCommand.includes('select all')) {
-        // Select all layers
-        console.log('Voice command: select all');
-      } else if (lowerCommand.includes('crop')) {
-        setTool('crop');
-      } else if (lowerCommand.includes('move')) {
-        setTool('move');
-      }
-    };
+      setElements(prev => {
+        const newElements = [...prev]
+        const lastElement = newElements[newElements.length - 1]
+        if (lastElement && lastElement.type === 'line') {
+          lastElement.points = newPath
+        }
+        return newElements
+      })
+    } else if (mode === 'shape') {
+      setElements(prev => {
+        const newElements = [...prev]
+        const lastElement = newElements[newElements.length - 1]
+        if (lastElement && lastElement.type === 'rect' && lastElement.x !== undefined && lastElement.y !== undefined) {
+          lastElement.width = point.x - lastElement.x
+          lastElement.height = point.y - lastElement.y
+        }
+        return newElements
+      })
+    }
+  }
 
-    // This would be connected to the voice system
-    const voiceEventHandler = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail?.command) {
-        handleVoiceCommand(customEvent.detail.command);
-      }
-    };
-    
-    window.addEventListener('voiceCommand', voiceEventHandler);
+  const handleMouseUp = () => {
+    setIsDrawing(false)
+    setCurrentPath([])
+  }
 
-    return () => {
-      window.removeEventListener('voiceCommand', voiceEventHandler);
-    };
-  }, []);
+  const clearCanvas = () => {
+    setElements([])
+  }
 
-  if (canvasState.isLoading) {
+  const exportCanvas = () => {
+    if (stageRef.current) {
+      const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 })
+      
+      // Create download link
+      const link = document.createElement('a')
+      link.download = 'flux-create-export.png'
+      link.href = dataURL
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      console.log('Canvas exported successfully')
+      return dataURL
+    }
+  }
+
+  const ImageComponent = () => {
+    if (!image) return null
+
+    const aspectRatio = image.width / image.height
+    let displayWidth = width
+    let displayHeight = height
+
+    if (aspectRatio > width / height) {
+      displayHeight = width / aspectRatio
+    } else {
+      displayWidth = height * aspectRatio
+    }
+
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-        <div className="glass-overlay p-8 rounded-xl">
-          <div className="flex items-center space-x-4">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-            <div>
-              <div className="text-lg font-medium text-white">Loading Image</div>
-              <div className="text-sm text-white/60">Processing your image...</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+      <KonvaImage
+        image={image}
+        width={displayWidth}
+        height={displayHeight}
+        x={(width - displayWidth) / 2}
+        y={(height - displayHeight) / 2}
+      />
+    )
   }
 
   return (
-    <div 
-      className="absolute inset-0 canvas-container"
-      id="main-canvas"
-      role="img"
-      aria-label="Image editing canvas"
-      tabIndex={0}
-    >
-      {/* Canvas Tools */}
-      <div className="absolute top-4 left-4 z-20">
-        <div className="glass-overlay p-3 rounded-xl border backdrop-blur-xl">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setTool('select')}
-              className={`glass-button p-2 rounded ${tool === 'select' ? 'canvas-tool-active' : ''}`}
-              title="Select Tool"
-              aria-label="Select tool"
-            >
-              <Move className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setTool('crop')}
-              className={`glass-button p-2 rounded ${tool === 'crop' ? 'canvas-tool-active' : ''}`}
-              title="Crop Tool"
-              aria-label="Crop tool"
-            >
-              <Crop className="w-4 h-4" />
-            </button>
-            <div className="border-l border-white/20 mx-2 h-6" />
-            <button
-              onClick={handleZoomIn}
-              className="glass-button p-2 rounded"
-              title="Zoom In"
-              aria-label="Zoom in"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleZoomOut}
-              className="glass-button p-2 rounded"
-              title="Zoom Out"
-              aria-label="Zoom out"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleZoomReset}
-              className="glass-button p-2 rounded text-xs"
-              title="Reset Zoom"
-              aria-label="Reset zoom to 100%"
-            >
-              {Math.round(stageScale * 100)}%
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Canvas */}
-      <div 
-        className="w-full h-full relative"
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
+    <div className="relative bg-gray-900 rounded-lg overflow-hidden">
+      <Stage
+        ref={stageRef}
+        width={width}
+        height={height}
+        onMouseDown={handleMouseDown}
+        onMousemove={handleMouseMove}
+        onMouseup={handleMouseUp}
+        scale={{ x: zoom / 100, y: zoom / 100 }}
+        className="cursor-crosshair"
       >
-        {canvasState.image ? (
-          <Stage
-            ref={stageRef}
-            width={window.innerWidth}
-            height={window.innerHeight}
-            scaleX={stageScale}
-            scaleY={stageScale}
-            x={stagePosition.x}
-            y={stagePosition.y}
-            onWheel={handleWheel}
-            onClick={handleStageClick}
-            onTap={handleStageClick}
-            draggable={tool === 'move'}
-            onDragStart={() => setIsDragging(true)}
-            onDragEnd={(e) => {
-              setIsDragging(false);
-              setStagePosition({ x: e.target.x(), y: e.target.y() });
-            }}
-          >
-            <Layer>
-              {/* Background */}
-              <Rect
-                width={canvasState.width}
-                height={canvasState.height}
-                fill="#f8f9fa"
-                stroke="#e9ecef"
-                strokeWidth={1}
-              />
-              
-              {/* Main Image */}
-              {canvasState.layers.map((layer) => (
-                <Group key={layer.id}>
-                  {layer.type === 'image' && (
-                    <ImageLayer
-                      id={layer.id}
-                      image={layer.image}
-                      x={layer.x || 0}
-                      y={layer.y || 0}
-                      width={layer.width}
-                      height={layer.height}
-                      rotation={layer.rotation || 0}
-                      scaleX={layer.scaleX || 1}
-                      scaleY={layer.scaleY || 1}
-                      filters={layer.filters}
-                      visible={layer.visible !== false}
-                      onSelect={setSelectedId}
-                    />
-                  )}
-                </Group>
-              ))}
-              
-              {/* Transformer for selected elements */}
-              <Transformer
-                ref={transformerRef}
-                boundBoxFunc={(oldBox, newBox) => {
-                  // Limit resize
-                  if (newBox.width < 5 || newBox.height < 5) {
-                    return oldBox;
-                  }
-                  return newBox;
-                }}
-                anchorFill="#3b82f6"
-                anchorStroke="#ffffff"
-                borderStroke="#3b82f6"
-                borderStrokeWidth={2}
-                anchorSize={8}
-                rotateAnchorOffset={20}
-                enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
-              />
-            </Layer>
-          </Stage>
-        ) : (
-          // Empty state
-          <div className="absolute inset-0 flex items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-overlay p-8 rounded-xl border backdrop-blur-xl text-center max-w-md"
-            >
-              <Upload className="w-16 h-16 mx-auto mb-4 text-white/40" />
-              <h3 className="text-xl font-semibold text-white mb-2">
-                Start Creating
-              </h3>
-              <p className="text-white/60 mb-6">
-                Drop an image here, or say "open image" to get started with voice control.
-              </p>
-              
-              <div className="space-y-3">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      onImageUpload(file);
+        <Layer>
+          {/* Background */}
+          <Rect width={width} height={height} fill="#1a1a1a" />
+          
+          {/* Main Image */}
+          <ImageComponent />
+          
+          {/* Drawing Elements */}
+          {elements.map((element) => {
+            switch (element.type) {
+              case 'line':
+                return (
+                  <Line
+                    key={element.id}
+                    points={element.points || []}
+                    stroke={element.stroke}
+                    strokeWidth={element.strokeWidth}
+                    tension={0.5}
+                    lineCap="round"
+                    lineJoin="round"
+                    globalCompositeOperation={
+                      element.stroke === 'white' ? 'destination-out' : 'source-over'
                     }
-                  }}
-                  className="hidden"
-                  id="file-upload"
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="glass-button w-full p-3 rounded-lg cursor-pointer inline-block"
-                >
-                  Choose Image
-                </label>
-                
-                <div className="text-xs text-white/40">
-                  Supports: JPG, PNG, WebP, SVG
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </div>
-
-      {/* Canvas Info */}
-      <div className="absolute bottom-4 right-4 z-20">
-        <div className="glass-overlay p-3 rounded-xl border backdrop-blur-xl">
-          <div className="text-xs text-white/60 space-y-1">
-            <div>Canvas: {canvasState.width} × {canvasState.height}</div>
-            <div>Zoom: {Math.round(stageScale * 100)}%</div>
-            {selectedId && <div>Selected: {selectedId}</div>}
-          </div>
-        </div>
-      </div>
-
-      {/* Accessibility info */}
-      <div className="sr-only" aria-live="polite">
-        {canvasState.image ? 'Image loaded on canvas' : 'Canvas is empty, ready for image upload'}
-        {selectedId && `Selected element: ${selectedId}`}
-        {tool !== 'select' && `Current tool: ${tool}`}
+                  />
+                )
+              case 'rect':
+                return (
+                  <Rect
+                    key={element.id}
+                    x={element.x}
+                    y={element.y}
+                    width={element.width}
+                    height={element.height}
+                    stroke={element.stroke}
+                    strokeWidth={element.strokeWidth}
+                    fill={element.fill}
+                  />
+                )
+              case 'circle':
+                return (
+                  <Circle
+                    key={element.id}
+                    x={element.x}
+                    y={element.y}
+                    radius={Math.abs(element.width || 0) / 2}
+                    stroke={element.stroke}
+                    strokeWidth={element.strokeWidth}
+                    fill={element.fill}
+                  />
+                )
+              case 'text':
+                return (
+                  <Text
+                    key={element.id}
+                    x={element.x}
+                    y={element.y}
+                    text={element.text}
+                    fontSize={20}
+                    fill={element.stroke}
+                    draggable
+                  />
+                )
+              default:
+                return null
+            }
+          })}
+        </Layer>
+      </Stage>
+      
+      {/* Canvas Controls Overlay */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        <button
+          onClick={clearCanvas}
+          className="px-3 py-1 bg-red-500/50 hover:bg-red-500/70 text-white text-sm rounded-lg border border-red-400/50 transition-all duration-200"
+        >
+          Clear
+        </button>
+        <button
+          onClick={exportCanvas}
+          className="px-3 py-1 bg-green-500/50 hover:bg-green-500/70 text-white text-sm rounded-lg border border-green-400/50 transition-all duration-200"
+        >
+          Export
+        </button>
       </div>
     </div>
-  );
+  )
 }
 
-// Image layer component
-function ImageLayer({
-  id,
-  image,
-  x,
-  y,
-  width,
-  height,
-  rotation = 0,
-  scaleX = 1,
-  scaleY = 1,
-  filters = [],
-  visible = true,
-  onSelect
-}: {
-  id: string;
-  image: HTMLImageElement;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation?: number;
-  scaleX?: number;
-  scaleY?: number;
-  filters?: any[];
-  visible?: boolean;
-  onSelect: (id: string) => void;
-}) {
-  const imageRef = useRef<Konva.Image>(null);
-
-  // Apply filters
-  useEffect(() => {
-    if (imageRef.current && filters.length > 0) {
-      const konvaFilters = filters.map(filter => {
-        switch (filter.type) {
-          case 'blur':
-            return Konva.Filters.Blur;
-          case 'brighten':
-            return Konva.Filters.Brighten;
-          case 'contrast':
-            return Konva.Filters.Contrast;
-          case 'grayscale':
-            return Konva.Filters.Grayscale;
-          case 'sepia':
-            return Konva.Filters.Sepia;
-          default:
-            return null;
-        }
-      }).filter((filter): filter is typeof Konva.Filters.Blur => filter !== null);
-
-      imageRef.current.filters(konvaFilters);
-      imageRef.current.cache();
-      imageRef.current.getLayer()?.batchDraw();
-    }
-  }, [filters]);
-
-  return (
-    <KonvaImage
-      ref={imageRef}
-      id={id}
-      image={image}
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      rotation={rotation}
-      scaleX={scaleX}
-      scaleY={scaleY}
-      visible={visible}
-      draggable
-      onClick={() => onSelect(id)}
-      onTap={() => onSelect(id)}
-      perfectDrawEnabled={false}
-    />
-  );
-}
+export default Canvas

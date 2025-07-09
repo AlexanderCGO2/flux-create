@@ -76,6 +76,7 @@ function createMainWindow() {
 
   // Window event handlers
   mainWindow.once('ready-to-show', () => {
+    console.log('Main window ready to show');
     if (splashWindow) {
       splashWindow.close();
     }
@@ -85,6 +86,43 @@ function createMainWindow() {
     if (isDev) {
       mainWindow.webContents.openDevTools();
     }
+  });
+
+  // Backup timer to show window if ready-to-show doesn't fire
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      console.log('Forcing main window to show after timeout');
+      if (splashWindow) {
+        splashWindow.close();
+      }
+      mainWindow.show();
+      if (isDev) {
+        mainWindow.webContents.openDevTools();
+      }
+    }
+  }, 8000); // 8 second timeout
+
+  // Add error handling for loading failures
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('Failed to load:', errorCode, errorDescription, validatedURL);
+    if (splashWindow) {
+      splashWindow.close();
+    }
+    mainWindow.show();
+  });
+
+  // Add success loading handler
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('Main window finished loading');
+    setTimeout(() => {
+      if (splashWindow) {
+        splashWindow.close();
+      }
+      mainWindow.show();
+      if (isDev) {
+        mainWindow.webContents.openDevTools();
+      }
+    }, 1000); // Give it 1 second to render
   });
 
   // Save window bounds on close
