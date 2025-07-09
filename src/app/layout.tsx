@@ -13,53 +13,56 @@ export const metadata: Metadata = {
   description: 'World\'s first voice-controlled image editor with AI-powered Flux integration. Transform images with simple voice commands.',
   keywords: ['AI', 'image editor', 'voice control', 'Flux', 'artificial intelligence', 'accessibility'],
   authors: [{ name: 'Flux Create Team' }],
-  creator: 'Flux Create',
+  creator: 'Flux Create Team',
   publisher: 'Flux Create',
-  robots: 'index, follow',
+  category: 'productivity',
   openGraph: {
     title: 'Flux Create - AI-Powered Voice Image Editor',
-    description: 'Transform images with voice commands using AI-powered Flux technology',
+    description: 'Transform images with voice commands and AI',
     type: 'website',
     locale: 'en_US',
-    siteName: 'Flux Create',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Flux Create - AI-Powered Voice Image Editor',
-    description: 'Transform images with voice commands using AI-powered Flux technology',
-    creator: '@fluxcreate',
+    title: 'Flux Create',
+    description: 'AI-Powered Voice Image Editor',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: 'https://fluxcreate.ai',
   },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#667eea',
+  minimumScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#1a1a1a' },
+  ],
 }
 
-interface RootLayoutProps {
+export default function RootLayout({
+  children,
+}: {
   children: React.ReactNode
-}
-
-export default function RootLayout({ children }: RootLayoutProps) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-      </head>
-      <body className={`${inter.className} antialiased`}>
+    <html lang="en" className={inter.className}>
+      <body className="min-h-screen bg-transparent antialiased">
         <QueryProvider>
-          <AccessibilityProvider>
-            <VoiceProvider>
-              <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700">
-                {children}
-                <Toaster />
-              </div>
-            </VoiceProvider>
-          </AccessibilityProvider>
+          <VoiceProvider>
+            <AccessibilityProvider>
+              {children}
+              <Toaster />
+            </AccessibilityProvider>
+          </VoiceProvider>
         </QueryProvider>
       </body>
     </html>
