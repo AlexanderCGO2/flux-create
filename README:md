@@ -1,1 +1,105 @@
-hello
+# FluxCreate - AI Image Editor
+
+A professional Electron desktop application for AI-powered image generation and editing using Flux models via Replicate API.
+
+## Features
+
+- 🎨 **AI Image Generation** - Text-to-image with Flux Pro
+- ✨ **Image Editing** - Advanced inpainting with Flux Kontext Pro  
+- 🔍 **4K Upscaling** - SwinIR integration
+- 🎤 **Voice Control** - Hands-free operation
+- 🖌️ **Canvas Editing** - Real-time drawing and editing
+- 🌟 **Glass Morphism UI** - Modern, beautiful interface
+
+## Setup Instructions
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+
+### 2. Configure Replicate API Token
+
+**Option A: Environment Variable (Recommended)**
+```bash
+export REPLICATE_API_TOKEN="your_replicate_api_token_here"
+```
+
+**Option B: Create .env.local file**
+Create a `.env.local` file in the project root:
+```
+REPLICATE_API_TOKEN=your_replicate_api_token_here
+```
+
+### 3. Get Your Replicate API Token
+
+1. Go to [Replicate.com](https://replicate.com)
+2. Sign up or log in to your account
+3. Navigate to your [Account Settings](https://replicate.com/account/api-tokens)
+4. Create a new API token
+5. Copy the token and use it in step 2 above
+
+### 4. Run the Application
+
+**Development Mode:**
+```bash
+npm run dev
+```
+
+**Production Build:**
+```bash
+npm run build
+npm start
+```
+
+## Usage
+
+1. **Generate Images**: Enter a prompt and click "Generate AI Image"
+2. **Voice Commands**: 
+   - "Generate a sunset over mountains"
+   - "Zoom in" / "Zoom out"
+   - "Save project"
+3. **Canvas Tools**: Use brush, eraser, and selection tools
+4. **File Operations**: Upload, save, and export your creations
+
+## Supported Models
+
+- **Flux Pro** - High-quality text-to-image generation
+- **Flux Kontext Pro** - Advanced image editing and inpainting
+- **SwinIR** - 4K image upscaling
+- **RemBG** - Background removal
+
+## System Requirements
+
+- **Node.js** 18+ 
+- **macOS, Windows, or Linux**
+- **4GB RAM minimum** (8GB recommended for large images)
+- **Replicate API account** with available credits
+
+## Troubleshooting
+
+**Canvas not loading?**
+- Make sure you're running the app in development mode with `npm run dev`
+- Check browser console for any JavaScript errors
+
+**Generation failing?**
+- Verify your Replicate API token is correctly set
+- Check your Replicate account has sufficient credits
+- Ensure internet connection is stable
+
+**Performance issues?**
+- Close other applications to free up memory
+- Use smaller image sizes for faster processing
+- Reduce canvas zoom level if drawing feels laggy
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -am 'Add feature'`
+4. Push to branch: `git push origin feature-name`
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details

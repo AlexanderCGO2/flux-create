@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import '@/styles/globals.css'
 import { QueryProvider } from '@/lib/providers/QueryProvider'
@@ -16,8 +16,6 @@ export const metadata: Metadata = {
   creator: 'Flux Create',
   publisher: 'Flux Create',
   robots: 'index, follow',
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#667eea',
   openGraph: {
     title: 'Flux Create - AI-Powered Voice Image Editor',
     description: 'Transform images with voice commands using AI-powered Flux technology',
@@ -31,6 +29,12 @@ export const metadata: Metadata = {
     description: 'Transform images with voice commands using AI-powered Flux technology',
     creator: '@fluxcreate',
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#667eea',
 }
 
 interface RootLayoutProps {

@@ -6,472 +6,517 @@ import {
   Mic, MicOff, Zap, Upload, Settings, Palette, Download, 
   RotateCcw, RotateCw, ZoomIn, ZoomOut, Move, Square,
   Circle, Type, Brush, Eraser, Save, FileImage,
-  Volume2, VolumeX, Eye, EyeOff, Layers, Filter
+  Volume2, VolumeX, Eye, EyeOff, Layers, Filter,
+  Sparkles, Plus, Minus,
+  Grid3X3, Maximize2, MoreHorizontal, X
 } from 'lucide-react'
 import { GlassOverlay } from '@/components/ui/GlassOverlay'
 import { Canvas } from '@/components/canvas/Canvas'
 import { useVoiceContext } from '@/lib/providers/VoiceProvider'
 import { useAccessibility } from '@/lib/providers/AccessibilityProvider'
+import { fluxAI } from '@/lib/ai/flux'
 import { toast } from 'sonner'
 
 export default function HomePage() {
   const [isElectron, setIsElectron] = useState(false)
   const [currentImage, setCurrentImage] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [prompt, setPrompt] = useState('')
   const [canvasMode, setCanvasMode] = useState<'select' | 'brush' | 'eraser' | 'text' | 'shape'>('select')
   const [brushSize, setBrushSize] = useState(10)
   const [zoom, setZoom] = useState(100)
   const [showLayers, setShowLayers] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  const [activePanel, setActivePanel] = useState<'generate' | 'edit' | 'filters' | null>('generate')
+
+  const promptInputRef = useRef<HTMLTextAreaElement>(null)
   
-  const voice = useVoiceContext()
-  const { announce } = useAccessibility()
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { 
+    isListening, 
+    startListening, 
+    stopListening, 
+    transcript: lastTranscript 
+  } = useVoiceContext()
+  
+  const { 
+    announce
+  } = useAccessibility()
 
+  // Check if running in Electron
   useEffect(() => {
-    setIsElectron(typeof window !== 'undefined' && !!window.electronAPI)
-    console.log('FluxCreate app initialized')
-    console.log('Voice support:', voice.isSupported)
-    console.log('Electron environment:', typeof window !== 'undefined' && !!window.electronAPI)
-    
-    // Initialize canvas
-    if (canvasRef.current) {
-      const ctx = canvasRef.current.getContext('2d')
-      if (ctx) {
-        ctx.fillStyle = '#1a1a1a'
-        ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+    setIsElectron(typeof window !== 'undefined' && !!(window as any).electronAPI)
+  }, [])
+
+  // Handle voice commands
+  useEffect(() => {
+    if (lastTranscript) {
+      const command = lastTranscript.toLowerCase()
+      console.log('🎤 Voice command received:', command)
+      
+      if (command.includes('generate') || command.includes('create')) {
+        const promptMatch = command.match(/(?:generate|create)\s+(.+)/i)
+        if (promptMatch) {
+          const extractedPrompt = promptMatch[1]
+          setPrompt(extractedPrompt)
+          handleGenerateImage(extractedPrompt)
+          announce(`Generating image: ${extractedPrompt}`, 'polite')
+        }
+      } else if (command.includes('zoom in')) {
+        setZoom(prev => Math.min(prev + 25, 400))
+        announce('Zoomed in', 'polite')
+      } else if (command.includes('zoom out')) {
+        setZoom(prev => Math.max(prev - 25, 25))
+        announce('Zoomed out', 'polite')
       }
     }
-  }, [voice.isSupported])
+  }, [lastTranscript])
 
-  const handleVoiceToggle = () => {
-    try {
-      if (voice.isListening) {
-        voice.stopListening()
-        announce('Voice control stopped', 'polite')
-        toast.success('Voice control stopped')
-      } else {
-        voice.startListening()
-        announce('Voice control started', 'polite')
-        toast.success('Voice control started - say a command!')
-      }
-    } catch (error) {
-      console.error('Voice toggle error:', error)
-      toast.error('Voice control unavailable')
-    }
-  }
-
-  const handleImageUpload = () => {
-    if (isElectron && window.electronAPI) {
-      // Electron file dialog
-      window.electronAPI.openImage?.((event: any, filePath: string) => {
-        setCurrentImage(filePath)
-        toast.success('Image loaded successfully')
-      })
-    } else {
-      // Web file input
-      fileInputRef.current?.click()
-    }
-  }
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setCurrentImage(e.target?.result as string)
-        toast.success('Image loaded successfully')
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleAIGeneration = async () => {
-    if (!voice.transcript) {
-      toast.error('Please speak a command first')
+  const handleGenerateImage = async (inputPrompt?: string) => {
+    const promptToUse = inputPrompt || prompt
+    if (!promptToUse.trim()) {
+      toast.error('Please enter a prompt for image generation')
+      announce('Please enter a prompt for image generation', 'assertive')
       return
     }
 
     setIsProcessing(true)
+    setIsGenerating(true)
+    console.log('🎨 Starting AI image generation with prompt:', promptToUse)
+    announce(`Starting AI generation: ${promptToUse}`, 'polite')
+
     try {
-      announce('Generating AI image', 'polite')
-      toast.loading('AI is generating your image...')
+      const result = await fluxAI.generateImage({
+        prompt: promptToUse,
+        width: 1024,
+        height: 1024,
+        num_inference_steps: 50,
+        guidance_scale: 7.5
+      })
+
+      setCurrentImage(result)
+      setPrompt('')
       
-      // Simulate AI generation
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      
-      // Mock generated image
-      setCurrentImage('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY3ZWVhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5BSSBHZW5lcmF0ZWQgSW1hZ2U8L3RleHQ+PC9zdmc+')
-      
-      toast.success('AI image generated successfully!')
-      announce('AI image generated', 'polite')
+      toast.success('Image generated successfully!')
+      announce('Image generation completed successfully', 'polite')
+      console.log('✅ Image generation completed successfully')
     } catch (error) {
-      console.error('AI generation error:', error)
-      toast.error('Failed to generate AI image')
+      console.error('❌ Image generation failed:', error)
+      toast.error(error instanceof Error ? error.message : 'Generation failed')
+      announce('Image generation failed', 'assertive')
     } finally {
       setIsProcessing(false)
+      setIsGenerating(false)
     }
   }
 
+  const macOSControls = [
+    { id: 'close', color: 'bg-red-500 hover:bg-red-600' },
+    { id: 'minimize', color: 'bg-yellow-500 hover:bg-yellow-600' },
+    { id: 'maximize', color: 'bg-green-500 hover:bg-green-600' }
+  ]
+
+  const tools = [
+    { id: 'select', icon: Move, label: 'Select', shortcut: 'V' },
+    { id: 'brush', icon: Brush, label: 'Brush', shortcut: 'B' },
+    { id: 'eraser', icon: Eraser, label: 'Eraser', shortcut: 'E' },
+    { id: 'text', icon: Type, label: 'Text', shortcut: 'T' },
+    { id: 'shape', icon: Square, label: 'Shape', shortcut: 'U' }
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-      <GlassOverlay />
-      
-      {/* Hidden file input for web */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileSelect}
-        className="hidden"
-      />
+    <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black relative overflow-hidden">
+      {/* macOS Window Controls */}
+      <div className="absolute top-0 left-0 right-0 h-8 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 z-50 flex items-center">
+        <div className="flex items-center gap-2 pl-4">
+          {macOSControls.map((control) => (
+            <motion.button
+              key={control.id}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className={`w-3 h-3 rounded-full ${control.color} transition-colors duration-200`}
+            />
+          ))}
+        </div>
+        <div className="flex-1 flex justify-center">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+            FluxCreate - AI Image Editor
+          </span>
+        </div>
+        <div className="w-16" />
+      </div>
 
-      {/* Main Container */}
-      <div className="relative z-10 h-screen flex flex-col">
-        
-        {/* Top Control Panel */}
+      {/* Main Layout */}
+      <div className="flex h-full pt-8">
+        {/* Sidebar */}
         <motion.div 
-          className="glass-panel backdrop-blur-xl bg-white/10 border-b border-white/20 p-4"
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          initial={{ width: sidebarExpanded ? 280 : 64 }}
+          animate={{ width: sidebarExpanded ? 280 : 64 }}
+          className="bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 flex flex-col"
         >
-          <div className="flex items-center justify-between">
-            
-            {/* Left Controls - File Operations */}
-            <div className="flex items-center gap-3">
-              <motion.div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                  F
-                </div>
-                <span className="text-white font-semibold text-lg">Flux Create</span>
-              </motion.div>
-              
-              <div className="h-6 w-px bg-white/30 mx-2" />
-              
-              <div className="flex items-center gap-2">
-                <motion.button
-                  onClick={handleImageUpload}
-                  className="glass-button p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-200 border border-white/20"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Upload Image"
+          {/* Sidebar Header */}
+          <div className="p-4 border-b border-gray-200/50 dark:border-gray-700/50">
+            <div className="flex items-center justify-between">
+              {sidebarExpanded && (
+                <motion.h2 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-lg font-semibold text-gray-800 dark:text-gray-200"
                 >
-                  <Upload className="w-5 h-5 text-white" />
-                </motion.button>
-                
-                <motion.button
-                  onClick={() => setCurrentImage(null)}
-                  className="glass-button p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-200 border border-white/20"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="New Project"
-                >
-                  <FileImage className="w-5 h-5 text-white" />
-                </motion.button>
-
-                <motion.button
-                  className="glass-button p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-200 border border-white/20"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Save"
-                >
-                  <Save className="w-5 h-5 text-white" />
-                </motion.button>
-              </div>
-            </div>
-
-            {/* Center Controls - Canvas Tools */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/20">
-                {[
-                  { mode: 'select', icon: Move, title: 'Select' },
-                  { mode: 'brush', icon: Brush, title: 'Brush' },
-                  { mode: 'eraser', icon: Eraser, title: 'Eraser' },
-                  { mode: 'text', icon: Type, title: 'Text' },
-                  { mode: 'shape', icon: Square, title: 'Shape' },
-                ].map(({ mode, icon: Icon, title }) => (
-                  <motion.button
-                    key={mode}
-                    onClick={() => setCanvasMode(mode as any)}
-                    className={`p-2 rounded-md transition-all duration-200 ${
-                      canvasMode === mode 
-                        ? 'bg-blue-500/50 text-white border border-blue-400/50' 
-                        : 'hover:bg-white/10 text-white/80'
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    title={title}
-                  >
-                    <Icon className="w-4 h-4" />
-                  </motion.button>
-                ))}
-              </div>
-              
-              <div className="h-6 w-px bg-white/30 mx-2" />
-              
-              {/* Zoom Controls */}
-              <div className="flex items-center gap-1">
-                <motion.button
-                  onClick={() => setZoom(Math.max(25, zoom - 25))}
-                  className="glass-button p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-200 border border-white/20"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-4 h-4 text-white" />
-                </motion.button>
-                
-                <span className="text-white text-sm min-w-12 text-center">{zoom}%</span>
-                
-                <motion.button
-                  onClick={() => setZoom(Math.min(400, zoom + 25))}
-                  className="glass-button p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-200 border border-white/20"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-4 h-4 text-white" />
-                </motion.button>
-              </div>
-            </div>
-
-            {/* Right Controls - Voice & AI */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <motion.button
-                  onClick={() => setShowLayers(!showLayers)}
-                  className={`glass-button p-2 rounded-lg transition-all duration-200 border border-white/20 ${
-                    showLayers ? 'bg-blue-500/50' : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Layers"
-                >
-                  <Layers className="w-5 h-5 text-white" />
-                </motion.button>
-                
-                <motion.button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`glass-button p-2 rounded-lg transition-all duration-200 border border-white/20 ${
-                    showFilters ? 'bg-blue-500/50' : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Filters"
-                >
-                  <Filter className="w-5 h-5 text-white" />
-                </motion.button>
-              </div>
-              
-              <div className="h-6 w-px bg-white/30 mx-2" />
-              
-              {/* Voice Controls */}
-              <div className="flex items-center gap-2">
-                <motion.button
-                  onClick={handleVoiceToggle}
-                  className={`glass-button p-3 rounded-xl transition-all duration-200 border ${
-                    voice.isListening 
-                      ? 'bg-red-500/50 border-red-400/50 animate-pulse' 
-                      : 'bg-white/10 hover:bg-white/20 border-white/20'
-                  }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title={voice.isListening ? 'Stop Voice Control' : 'Start Voice Control'}
-                >
-                  {voice.isListening ? (
-                    <Mic className="w-6 h-6 text-white" />
-                  ) : (
-                    <MicOff className="w-6 h-6 text-white" />
-                  )}
-                </motion.button>
-
-                <motion.button
-                  onClick={handleAIGeneration}
-                  disabled={isProcessing}
-                  className={`glass-button p-3 rounded-xl transition-all duration-200 border border-white/20 ${
-                    isProcessing 
-                      ? 'bg-yellow-500/50 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-purple-500/50 to-blue-500/50 hover:from-purple-500/70 hover:to-blue-500/70'
-                  }`}
-                  whileHover={!isProcessing ? { scale: 1.05 } : {}}
-                  whileTap={!isProcessing ? { scale: 0.95 } : {}}
-                  title="Generate AI Image"
-                >
-                  <Zap className={`w-6 h-6 text-white ${isProcessing ? 'animate-spin' : ''}`} />
-                </motion.button>
-              </div>
+                  Tools
+                </motion.h2>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSidebarExpanded(!sidebarExpanded)}
+                className="p-1.5 rounded-lg bg-gray-200/50 dark:bg-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                <MoreHorizontal className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              </motion.button>
             </div>
           </div>
 
-          {/* Voice Transcript Display */}
-          <AnimatePresence>
-            {voice.transcript && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-3 p-3 bg-white/5 rounded-lg border border-white/20"
+          {/* Panel Navigation */}
+          <div className="p-2">
+            {[
+              { id: 'generate', icon: Zap, label: 'Generate' },
+              { id: 'edit', icon: Brush, label: 'Edit' },
+              { id: 'filters', icon: Filter, label: 'Filters' }
+            ].map((panel) => (
+              <motion.button
+                key={panel.id}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setActivePanel(panel.id as any)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
+                  activePanel === panel.id
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                }`}
               >
-                <div className="flex items-center gap-2">
-                  <Volume2 className="w-4 h-4 text-blue-400" />
-                  <span className="text-white text-sm">
-                    <span className="text-blue-400">Voice Command:</span> {voice.transcript}
-                  </span>
-                  {voice.confidence > 0 && (
-                    <span className="text-green-400 text-xs">
-                      ({Math.round(voice.confidence * 100)}% confidence)
-                    </span>
+                <panel.icon className="w-5 h-5" />
+                {sidebarExpanded && (
+                  <span className="font-medium">{panel.label}</span>
+                )}
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Panel Content */}
+          <div className="flex-1 p-4 overflow-y-auto">
+            <AnimatePresence mode="wait">
+              {activePanel === 'generate' && (
+                <motion.div
+                  key="generate"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-4"
+                >
+                  {sidebarExpanded && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Prompt
+                        </label>
+                        <textarea
+                          ref={promptInputRef}
+                          value={prompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          placeholder="Describe the image you want to create..."
+                          className="w-full h-24 p-3 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-600/50 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                              handleGenerateImage()
+                            }
+                          }}
+                        />
+                      </div>
+
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleGenerateImage()}
+                        disabled={isProcessing || !prompt.trim()}
+                        className="w-full flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all duration-200"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                              className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                            />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            Generate
+                          </>
+                        )}
+                      </motion.button>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          ⌘ + Enter to generate
+                        </span>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={isListening ? stopListening : startListening}
+                          className={`p-2 rounded-lg transition-all duration-200 ${
+                            isListening 
+                              ? 'bg-red-500 text-white shadow-lg' 
+                              : 'bg-gray-200/50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                        </motion.button>
+                      </div>
+                    </>
                   )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              )}
+
+              {activePanel === 'edit' && (
+                <motion.div
+                  key="edit"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-4"
+                >
+                  {/* Tools */}
+                  <div className="space-y-2">
+                    {tools.map((tool) => (
+                      <motion.button
+                        key={tool.id}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setCanvasMode(tool.id as any)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
+                          canvasMode === tool.id
+                            ? 'bg-blue-500 text-white shadow-md'
+                            : 'bg-gray-100/50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                        }`}
+                      >
+                        <tool.icon className="w-4 h-4" />
+                        {sidebarExpanded && (
+                          <>
+                            <span className="font-medium flex-1 text-left">{tool.label}</span>
+                            <span className="text-xs opacity-60">{tool.shortcut}</span>
+                          </>
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+
+                  {sidebarExpanded && (
+                    <>
+                      {/* Brush Size */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Brush Size: {brushSize}px
+                        </label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="50"
+                          value={brushSize}
+                          onChange={(e) => setBrushSize(Number(e.target.value))}
+                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                        />
+                      </div>
+
+                      {/* Zoom Controls */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Zoom: {zoom}%
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setZoom(prev => Math.max(prev - 25, 25))}
+                            className="p-2 bg-gray-200/50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          >
+                            <ZoomOut className="w-4 h-4" />
+                          </motion.button>
+                          <div className="flex-1 text-center text-sm font-medium">
+                            {zoom}%
+                          </div>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setZoom(prev => Math.min(prev + 25, 400))}
+                            className="p-2 bg-gray-200/50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          >
+                            <ZoomIn className="w-4 h-4" />
+                          </motion.button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </motion.div>
+              )}
+
+              {activePanel === 'filters' && (
+                <motion.div
+                  key="filters"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-4"
+                >
+                  {sidebarExpanded && (
+                    <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
+                      Filters coming soon...
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${
+                fluxAI.getStatus().ready ? 'bg-green-400' : 'bg-red-400'
+              }`} />
+              {sidebarExpanded && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {fluxAI.getStatus().ready ? 'AI Ready' : 'Setup Required'}
+                </span>
+              )}
+            </div>
+          </div>
         </motion.div>
 
         {/* Main Canvas Area */}
-        <div className="flex-1 flex">
-          {/* Side Panels */}
-          <AnimatePresence>
-            {showLayers && (
-              <motion.div
-                initial={{ x: -300, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -300, opacity: 0 }}
-                className="w-64 glass-panel backdrop-blur-xl bg-white/5 border-r border-white/20 p-4"
+        <div className="flex-1 flex flex-col bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm">
+          {/* Top Toolbar */}
+          <div className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between px-6">
+            <div className="flex items-center gap-4">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-600/50 rounded-xl hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200"
               >
-                <h3 className="text-white font-semibold mb-4">Layers</h3>
-                <div className="space-y-2">
-                  <div className="p-3 bg-white/10 rounded-lg border border-white/20">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white text-sm">Background</span>
-                      <Eye className="w-4 h-4 text-white" />
-                    </div>
-                  </div>
-                  <div className="p-3 bg-blue-500/20 rounded-lg border border-blue-400/50">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white text-sm">Main Image</span>
-                      <Eye className="w-4 h-4 text-white" />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <Upload className="w-4 h-4" />
+                <span className="text-sm font-medium">Import</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                disabled={!currentImage}
+                className="flex items-center gap-2 px-4 py-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-600/50 rounded-xl hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200 disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                <span className="text-sm font-medium">Export</span>
+              </motion.button>
+            </div>
 
-          {/* Canvas Container */}
-          <div className="flex-1 flex items-center justify-center p-8">
-            <motion.div 
-              className="glass-panel backdrop-blur-xl bg-white/5 border border-white/20 rounded-2xl p-8 max-w-4xl max-h-full"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              {currentImage ? (
-                <Canvas
-                  imageUrl={currentImage}
-                  width={800}
-                  height={600}
-                  mode={canvasMode}
-                  brushSize={brushSize}
-                  zoom={zoom}
-                  onImageLoad={(dimensions: { width: number; height: number }) => {
-                    console.log('Image loaded:', dimensions)
-                    announce(`Image loaded: ${dimensions.width} by ${dimensions.height} pixels`, 'polite')
-                  }}
-                />
-              ) : (
-                <div className="w-96 h-64 flex flex-col items-center justify-center text-center">
-                  <motion.div
-                    className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4"
-                    animate={{ 
-                      boxShadow: [
-                        '0 0 20px rgba(59, 130, 246, 0.3)',
-                        '0 0 40px rgba(147, 51, 234, 0.4)',
-                        '0 0 20px rgba(59, 130, 246, 0.3)'
-                      ]
-                    }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Palette className="w-8 h-8 text-white" />
-                  </motion.div>
-                  <h3 className="text-white text-xl font-semibold mb-2">Ready to Create</h3>
-                  <p className="text-white/70 text-sm mb-4">
-                    Upload an image or use voice commands to generate AI art
-                  </p>
-                  <div className="flex gap-3">
-                    <motion.button
-                      onClick={handleImageUpload}
-                      className="px-4 py-2 bg-blue-500/50 hover:bg-blue-500/70 text-white rounded-lg border border-blue-400/50 transition-all duration-200"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      Upload Image
-                    </motion.button>
-                    <motion.button
-                      onClick={handleVoiceToggle}
-                      className="px-4 py-2 bg-purple-500/50 hover:bg-purple-500/70 text-white rounded-lg border border-purple-400/50 transition-all duration-200"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      Start Voice Control
-                    </motion.button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
+            <div className="flex items-center gap-2">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setZoom(100)}
+                className="px-3 py-1.5 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-600/50 rounded-lg text-sm font-medium hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200"
+              >
+                {zoom}%
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-600/50 rounded-lg hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-200"
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </motion.button>
+            </div>
           </div>
 
-          {/* Right Side Panel - Filters */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ x: 300, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 300, opacity: 0 }}
-                className="w-64 glass-panel backdrop-blur-xl bg-white/5 border-l border-white/20 p-4"
-              >
-                <h3 className="text-white font-semibold mb-4">Filters & Effects</h3>
-                <div className="space-y-3">
-                  {['Blur', 'Sharpen', 'Vintage', 'Sepia', 'Grayscale', 'Brightness', 'Contrast', 'Saturation'].map((filter) => (
-                    <motion.button
-                      key={filter}
-                      className="w-full p-3 bg-white/10 hover:bg-white/20 rounded-lg border border-white/20 text-white text-sm transition-all duration-200"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {filter}
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Canvas Area */}
+          <div className="flex-1 p-6">
+            <Canvas 
+              imageUrl={currentImage || undefined}
+              width={1024}
+              height={768}
+              className="w-full h-full"
+              onImageChange={(dataUrl) => {
+                console.log('Canvas image changed:', dataUrl.slice(0, 50) + '...')
+                // Handle canvas changes here
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Loading Overlay */}
+      {/* Voice Transcript Display */}
       <AnimatePresence>
-        {isProcessing && (
+        {lastTranscript && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50"
           >
-            <div className="glass-panel backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 text-center">
-              <motion.div
-                className="w-16 h-16 border-4 border-white/30 border-t-blue-500 rounded-full mx-auto mb-4"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              />
-              <h3 className="text-white text-xl font-semibold mb-2">AI Processing</h3>
-              <p className="text-white/70">Creating your image...</p>
+            <div className="bg-black/80 backdrop-blur-xl text-white px-6 py-3 rounded-2xl shadow-2xl border border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-sm font-medium">
+                  "{lastTranscript}"
+                </span>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <style jsx global>{`
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: #3b82f6;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .slider::-moz-range-thumb {
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: #3b82f6;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: rgba(156, 163, 175, 0.3);
+          border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(156, 163, 175, 0.5);
+        }
+      `}</style>
     </div>
   )
 }
