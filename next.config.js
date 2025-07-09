@@ -1,14 +1,10 @@
-next/** @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  distDir: 'out',
-  trailingSlash: true,
+  // Remove export configuration - this is for Electron, not static export
   images: {
     unoptimized: true,
   },
   experimental: {
-    // Enable React 19 features
-    reactCompiler: true,
     // Enable Turbopack for faster development
     turbo: {
       rules: {
@@ -33,13 +29,6 @@ const nextConfig = {
       os: false,
     };
 
-    // Optimize for voice processing
-    config.optimization = {
-      ...config.optimization,
-      usedExports: true,
-      sideEffects: false,
-    };
-
     return config;
   },
   // Environment variables for AI integrations
@@ -47,28 +36,6 @@ const nextConfig = {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     FLUX_API_KEY: process.env.FLUX_API_KEY,
     NEXT_PUBLIC_APP_VERSION: process.env.npm_package_version,
-  },
-  // Headers for voice processing
-  async headers() {
-    return [
-      {
-        source: '/api/(.*)',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization',
-          },
-        ],
-      },
-    ];
   },
 };
 

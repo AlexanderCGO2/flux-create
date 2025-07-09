@@ -1,0 +1,68 @@
+interface ElectronAPI {
+  voice: {
+    processCommand: (audioData: ArrayBuffer) => Promise<{ success: boolean; command: string }>;
+    onToggle: (callback: () => void) => void;
+    onMute: (callback: () => void) => void;
+    onSettings: (callback: () => void) => void;
+    onTutorial: (callback: () => void) => void;
+    removeListener: (channel: string, callback: (...args: any[]) => void) => void;
+  };
+  
+  file: {
+    saveDialog: (options: {
+      filters?: Array<{ name: string; extensions: string[] }>;
+      defaultPath?: string;
+    }) => Promise<{ canceled: boolean; filePath?: string }>;
+    
+    openDialog: (options: {
+      properties?: string[];
+      filters?: Array<{ name: string; extensions: string[] }>;
+      defaultPath?: string;
+    }) => Promise<{ canceled: boolean; filePaths: string[] }>;
+    
+    onOpen: (callback: (filePath: string) => void) => void;
+    onSave: (callback: () => void) => void;
+    onExport: (callback: () => void) => void;
+    removeListener: (channel: string, callback: (...args: any[]) => void) => void;
+  };
+  
+  project: {
+    onNew: (callback: () => void) => void;
+    removeListener: (channel: string, callback: (...args: any[]) => void) => void;
+  };
+  
+  app: {
+    getVersion: () => Promise<string>;
+    getPath: (name: string) => Promise<string>;
+    platform: string;
+    arch: string;
+  };
+  
+  window: {
+    minimize: () => void;
+    maximize: () => void;
+    close: () => void;
+  };
+  
+  accessibility: {
+    announceToScreenReader: (message: string) => void;
+    setAriaLabel: (elementId: string, label: string) => void;
+  };
+  
+  dev: {
+    log: (message: string) => void;
+    error: (message: string) => void;
+  };
+}
+
+interface Window {
+  electronAPI: ElectronAPI;
+}
+
+declare global {
+  interface Window {
+    electronAPI: ElectronAPI;
+  }
+}
+
+export {};
