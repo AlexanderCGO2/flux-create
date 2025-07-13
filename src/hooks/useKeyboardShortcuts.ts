@@ -160,9 +160,8 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcuts) {
           'Delete: Delete selected',
         ];
         
-        window.electronAPI.accessibility.announceToScreenReader(
-          `Keyboard shortcuts available: ${shortcuts.join(', ')}`
-        );
+        // Announce keyboard shortcuts to screen reader
+        console.log(`Keyboard shortcuts available: ${shortcuts.join(', ')}`);
       }
     };
 

@@ -8,12 +8,9 @@ import {
   Sparkles, 
   BookOpen, 
   Image as ImageIcon,
-  Palette,
-  Wand2,
   Play,
   Volume2,
   ChevronRight,
-  Star,
   Users,
   Accessibility
 } from 'lucide-react';
@@ -24,13 +21,13 @@ interface WelcomeScreenProps {
 }
 
 export function WelcomeScreen({ onStartProject, onImageUpload }: WelcomeScreenProps) {
-  const [currentSlide, setCurrentSlide] = useState(0);
+
   const [showVoiceTutorial, setShowVoiceTutorial] = useState(false);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState(false);
 
   // Check if user has seen the tutorial before
   useEffect(() => {
-    const tutorialCompleted = localStorage.getItem('flux-tutorial-completed');
+    const tutorialCompleted = localStorage.getItem('craisee-tutorial-completed');
     setHasCompletedTutorial(!!tutorialCompleted);
   }, []);
 
@@ -55,7 +52,7 @@ export function WelcomeScreen({ onStartProject, onImageUpload }: WelcomeScreenPr
   };
 
   const markTutorialComplete = () => {
-    localStorage.setItem('flux-tutorial-completed', 'true');
+    localStorage.setItem('craisee-tutorial-completed', 'true');
     setHasCompletedTutorial(true);
     setShowVoiceTutorial(false);
   };
@@ -70,7 +67,7 @@ export function WelcomeScreen({ onStartProject, onImageUpload }: WelcomeScreenPr
     {
       icon: Sparkles,
       title: 'AI Generation',
-      description: 'Create and enhance with Flux AI models',
+      description: 'Create and enhance with AI models',
       color: 'text-blue-400'
     },
     {
@@ -136,16 +133,24 @@ export function WelcomeScreen({ onStartProject, onImageUpload }: WelcomeScreenPr
             className="text-center mb-12"
           >
             <div className="flex items-center justify-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4">
-                <Wand2 className="w-8 h-8 text-white" />
+              <div className="w-32 h-32 flex items-center justify-center mb-4">
+                <img 
+                  src="/assets/logos/craisee-logo.svg" 
+                  alt="CRAISEE Logo" 
+                  className="h-32 w-32 object-contain drop-shadow-2xl"
+                  onError={(e) => {
+                    // Fallback to PNG if SVG fails
+                    e.currentTarget.src = "/assets/logos/craisee-logo.png"
+                  }}
+                />
               </div>
             </div>
             
-            <h1 className="text-5xl font-bold text-white mb-4 font-display">
-              Welcome to Flux Create
+            <h1 className="text-4xl font-bold text-white mb-4 font-display">
+              CRAISEE Desk
             </h1>
             <p className="text-xl text-white/60 mb-8">
-              The world's first voice-controlled AI image editor
+              Voice-controlled AI image editor
             </p>
 
             {/* Feature Highlights */}
@@ -301,7 +306,7 @@ export function WelcomeScreen({ onStartProject, onImageUpload }: WelcomeScreenPr
 
       {/* Accessibility announcements */}
       <div className="sr-only" aria-live="polite">
-        Welcome to Flux Create. Upload an image to start editing, or try voice commands.
+        Welcome to CRAISEE Experiments Vol 1 VoiceEditor. Upload an image to start editing, or try voice commands.
       </div>
     </div>
   );
@@ -321,15 +326,15 @@ function VoiceTutorialModal({
   const tutorialSteps = [
     {
       title: 'Welcome to Voice Control',
-      content: 'Flux Create responds to natural voice commands. Let\'s learn the basics!',
+      content: 'CRAISEE VoiceEditor responds to natural voice commands. Let\'s learn the basics!',
       action: 'Press "Start" to begin',
       voiceCommand: null
     },
     {
       title: 'Activating Voice Control',
-      content: 'Say "Hello Flux" or press Ctrl+Shift+V to start voice control.',
-      action: 'Try saying "Hello Flux"',
-      voiceCommand: 'hello flux'
+      content: 'Say "Hello CRAISEE" or press Ctrl+Shift+V to start voice control.',
+      action: 'Try saying "Hello CRAISEE"',
+      voiceCommand: 'hello craisee'
     },
     {
       title: 'Basic Commands',

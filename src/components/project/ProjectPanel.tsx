@@ -7,16 +7,11 @@ import {
   Download, 
   Share2, 
   History, 
-  Folder, 
-  FileText,
-  Image as ImageIcon,
-  Settings,
   Cloud,
   Clock,
-  Star,
-  Trash2,
   Copy,
   ExternalLink,
+  Star,
   ChevronDown,
   CheckCircle
 } from 'lucide-react';
@@ -322,7 +317,7 @@ export function ProjectPanel({ currentProject, onExport }: ProjectPanelProps) {
                         <div className="flex space-x-2">
                           <input
                             type="text"
-                            value="https://flux.ai/projects/abc123"
+                            value="https://craisee.ai/projects/abc123"
                             readOnly
                             className="glass-input flex-1"
                           />

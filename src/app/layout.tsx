@@ -4,35 +4,35 @@ import '@/styles/globals.css'
 import { QueryProvider } from '@/lib/providers/QueryProvider'
 import { VoiceProvider } from '@/lib/providers/VoiceProvider'
 import { AccessibilityProvider } from '@/lib/providers/AccessibilityProvider'
-import { Toaster } from '@/components/ui/Toast'
+import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Flux Create - AI-Powered Voice Image Editor',
-  description: 'World\'s first voice-controlled image editor with AI-powered Flux integration. Transform images with simple voice commands.',
-  keywords: ['AI', 'image editor', 'voice control', 'Flux', 'artificial intelligence', 'accessibility'],
-  authors: [{ name: 'Flux Create Team' }],
-  creator: 'Flux Create Team',
-  publisher: 'Flux Create',
+  title: 'CRAISEE Desk',
+  description: 'Voice-controlled AI image editor. Transform images with simple voice commands.',
+  keywords: ['AI', 'image editor', 'voice control', 'CRAISEE', 'artificial intelligence', 'accessibility', 'desk', 'creative tools', 'voice editing'],
+  authors: [{ name: 'CRAISEE Team' }],
+  creator: 'CRAISEE Team',
+  publisher: 'CRAISEE',
   category: 'productivity',
   openGraph: {
-    title: 'Flux Create - AI-Powered Voice Image Editor',
-    description: 'Transform images with voice commands and AI',
+    title: 'CRAISEE Desk',
+    description: 'Voice-controlled AI image editor with AI integration',
     type: 'website',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Flux Create',
-    description: 'AI-Powered Voice Image Editor',
+    title: 'CRAISEE Desk',
+    description: 'Voice-controlled AI image editor',
   },
   robots: {
     index: true,
     follow: true,
   },
   alternates: {
-    canonical: 'https://fluxcreate.ai',
+    canonical: 'https://craisee.ai',
   },
 }
 
@@ -60,7 +60,12 @@ export default function RootLayout({
           <VoiceProvider>
             <AccessibilityProvider>
               {children}
-              <Toaster />
+              <Toaster 
+                position="top-right"
+                theme="dark"
+                richColors
+                closeButton
+              />
             </AccessibilityProvider>
           </VoiceProvider>
         </QueryProvider>

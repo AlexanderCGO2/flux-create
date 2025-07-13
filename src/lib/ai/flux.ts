@@ -1,12 +1,5 @@
 'use client'
 
-import Replicate from 'replicate'
-
-// Initialize Replicate client
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN || '',
-})
-
 export interface FluxGenerationOptions {
   prompt: string
   width?: number
@@ -30,20 +23,9 @@ export interface FluxEditOptions {
 
 export class FluxAIService {
   private static instance: FluxAIService
-  private isInitialized = false
 
   constructor() {
-    // Check for environment variable in multiple contexts
-    const token = process.env.REPLICATE_API_TOKEN || 
-                  (typeof window !== 'undefined' ? (window as any).__REPLICATE_TOKEN__ : null)
-    
-    this.isInitialized = !!token
-    
-    if (this.isInitialized) {
-      console.log('✅ Replicate API token found and initialized')
-    } else {
-      console.log('🔑 Replicate API token not found. Please set REPLICATE_API_TOKEN environment variable.')
-    }
+    console.log('🎨 Flux AI Service initialized')
   }
 
   static getInstance(): FluxAIService {
@@ -54,33 +36,25 @@ export class FluxAIService {
   }
 
   async generateImage(options: FluxGenerationOptions): Promise<string> {
-    if (!this.isInitialized) {
-      throw new Error('⚠️ Replicate API token not configured. Please set REPLICATE_API_TOKEN environment variable or create a .env.local file with your token.')
-    }
-
     console.log('🎨 Starting Flux Pro image generation...', options.prompt)
 
     try {
-      const output = await replicate.run(
-        "black-forest-labs/flux-kontext-pro:637a4f3a0a7b20d3e4aac7b1e1a5a7f0e1b2c3d4e5f6789abcdef0123456789abc",
-        {
-          input: {
-            prompt: options.prompt,
-            width: options.width || 1024,
-            height: options.height || 1024,
-            num_inference_steps: options.num_inference_steps || 50,
-            guidance_scale: options.guidance_scale || 7.5,
-            seed: options.seed,
-            ...(options.image && { image: options.image }),
-            ...(options.mask && { mask: options.mask }),
-            ...(options.strength && { strength: options.strength }),
-          }
-        }
-      ) as unknown as string[]
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(options),
+      })
 
-      const imageUrl = Array.isArray(output) ? output[0] : output as string
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
       console.log('✅ Flux Pro generation completed successfully')
-      return imageUrl
+      return data.imageUrl
     } catch (error: any) {
       console.error('❌ Flux Pro generation failed:', error)
       
@@ -100,109 +74,100 @@ export class FluxAIService {
   }
 
   async editImage(options: FluxEditOptions): Promise<string[]> {
-    if (!this.isInitialized) {
-      throw new Error('Replicate API token not configured')
-    }
-
     console.log('✏️ Editing image with Flux Kontext Pro...', { 
       prompt: options.prompt,
       hasMask: !!options.mask
     })
 
     try {
-      const output = await replicate.run(
-        "black-forest-labs/flux-kontext-pro:13a79db7306ceb4ccdc08edfee73f84cb8ce4d1a9dcd91c73e27d7ee7b9f9e83",
-        {
-          input: {
-            image: options.image,
-            prompt: options.prompt,
-            mask: options.mask,
-            strength: options.strength || 0.75,
-            guidance_scale: options.guidance_scale || 3.5,
-            num_inference_steps: options.num_inference_steps || 30,
-            output_format: "png",
-            output_quality: 100
-          }
-        }
-      ) as string[]
+      const response = await fetch('/api/edit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(options),
+      })
 
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
       console.log('✅ Image editing completed successfully')
-      return Array.isArray(output) ? output : [output as string]
-    } catch (error) {
+      return data.imageUrls
+    } catch (error: any) {
       console.error('❌ Flux editing failed:', error)
-      throw new Error(`Image editing failed: ${error}`)
+      throw new Error(`❌ Image editing failed: ${error.message}`)
     }
   }
 
   async upscaleImage(imageUrl: string): Promise<string> {
-    if (!this.isInitialized) {
-      throw new Error('Replicate API token not configured')
-    }
-
     console.log('🔍 Upscaling image...')
 
     try {
-      const output = await replicate.run(
-        "jingyunliang/swinir:660d922d33153019e8c263a3bba265de882e7f4f70396546b6c9c8f9d47a021a",
-        {
-          input: {
-            image: imageUrl,
-            task: "real_sr",
-            scale: 4
-          }
-        }
-      ) as unknown as string
+      const response = await fetch('/api/upscale', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageUrl }),
+      })
 
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
       console.log('✅ Image upscaling completed successfully')
-      return output
-    } catch (error) {
+      return data.imageUrl
+    } catch (error: any) {
       console.error('❌ Image upscaling failed:', error)
-      throw new Error(`Image upscaling failed: ${error}`)
+      throw new Error(`❌ Image upscaling failed: ${error.message}`)
     }
   }
 
   async removeBackground(imageUrl: string): Promise<string> {
-    if (!this.isInitialized) {
-      throw new Error('Replicate API token not configured')
-    }
-
     console.log('🎭 Removing background...')
 
     try {
-      const output = await replicate.run(
-        "cjwbw/rembg:fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
-        {
-          input: {
-            image: imageUrl
-          }
-        }
-      ) as unknown as string
+      const response = await fetch('/api/remove-bg', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageUrl }),
+      })
 
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
       console.log('✅ Background removal completed successfully')
-      return output
-    } catch (error) {
+      return data.imageUrl
+    } catch (error: any) {
       console.error('❌ Background removal failed:', error)
-      throw new Error(`Background removal failed: ${error}`)
+      throw new Error(`❌ Background removal failed: ${error.message}`)
     }
   }
 
   // Utility method to check if service is ready
   isReady(): boolean {
-    return this.isInitialized
+    return true // API routes handle the token validation
   }
 
   // Get service status
   getStatus(): { ready: boolean; message: string } {
-    if (this.isInitialized) {
-      return { ready: true, message: 'Flux AI service is ready' }
-    } else {
-      return { 
-        ready: false, 
-        message: 'Replicate API token not configured. Please set REPLICATE_API_TOKEN environment variable.' 
-      }
+    return { 
+      ready: true, 
+      message: 'Flux AI service is ready (using API routes)' 
     }
   }
 }
 
 // Export singleton instance
-export const fluxAI = FluxAIService.getInstance() 
+export const fluxAI = FluxAIService.getInstance()
+export default fluxAI 

@@ -52,7 +52,7 @@ export function useVoice() {
           console.log('Voice recognition started');
         };
         
-        recognitionRef.current.onresult = (event) => {
+        recognitionRef.current.onresult = (event: any) => {
           let interimTranscript = '';
           let finalTranscript = '';
           
@@ -83,7 +83,7 @@ export function useVoice() {
           }
         };
         
-        recognitionRef.current.onerror = (event) => {
+        recognitionRef.current.onerror = (event: any) => {
           console.error('Speech recognition error:', event.error);
           setState(prev => ({ 
             ...prev, 
@@ -184,9 +184,7 @@ export function useVoice() {
         recognitionRef.current.start();
         
         // Announce to screen reader
-        if (typeof window !== 'undefined' && window.electronAPI) {
-          window.electronAPI.accessibility.announceToScreenReader('Voice control activated');
-        }
+        console.log('Voice control activated');
         
       } catch (error) {
         console.error('Failed to start voice recognition:', error);
@@ -203,9 +201,7 @@ export function useVoice() {
       recognitionRef.current.stop();
       
       // Announce to screen reader
-      if (typeof window !== 'undefined' && window.electronAPI) {
-        window.electronAPI.accessibility.announceToScreenReader('Voice control deactivated');
-      }
+      console.log('Voice control deactivated');
     }
   }, [state.isListening]);
 

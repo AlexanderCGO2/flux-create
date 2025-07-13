@@ -21,7 +21,7 @@ export function Canvas({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(1)
-  const [tool, setTool] = useState<'select' | 'brush' | 'eraser'>('select')
+  const [tool] = useState<'select' | 'brush' | 'eraser'>('select')
   const [imageLoaded, setImageLoaded] = useState(false)
 
   // Load image onto canvas

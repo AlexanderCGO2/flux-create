@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sliders, 
-  Palette, 
   Layers, 
   Crop, 
   RotateCw, 
@@ -13,7 +12,6 @@ import {
   Brush,
   Eraser,
   Type,
-  Star,
   Circle,
   Square,
   Wand2,

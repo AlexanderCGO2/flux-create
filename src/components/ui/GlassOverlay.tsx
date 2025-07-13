@@ -1,33 +1,49 @@
 'use client';
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
 export function GlassOverlay() {
+  // Client-side particles to prevent hydration mismatch
+  const [particles, setParticles] = useState<Array<{id: number, left: number, top: number, duration: number, delay: number}>>([])
+  
+  useEffect(() => {
+    const newParticles = Array.from({ length: 20 }).map((_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      duration: 3 + Math.random() * 2,
+      delay: Math.random() * 2,
+    }))
+    setParticles(newParticles)
+  }, [])
+
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {/* Animated background particles */}
-      <div className="absolute inset-0">
-        {Array.from({ length: 20 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-2 h-2 bg-white/20 rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [-20, -100],
-              opacity: [0, 1, 0],
-            }}
-            transition={{
-              duration: 3 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-      </div>
+      {particles.length > 0 && (
+        <div className="absolute inset-0">
+          {particles.map((particle) => (
+            <motion.div
+              key={particle.id}
+              className="absolute w-2 h-2 bg-white/20 rounded-full"
+              style={{
+                left: `${particle.left}%`,
+                top: `${particle.top}%`,
+              }}
+              animate={{
+                y: [-20, -100],
+                opacity: [0, 1, 0],
+              }}
+              transition={{
+                duration: particle.duration,
+                repeat: Infinity,
+                delay: particle.delay,
+              }}
+            />
+          ))}
+        </div>
+      )}
       
       {/* Floating glass orbs */}
       <motion.div

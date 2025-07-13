@@ -68,7 +68,32 @@ interface Window {
 
 declare global {
   interface Window {
-    electronAPI: ElectronAPI;
+    electronAPI: {
+      // Window controls
+      closeWindow: () => Promise<void>
+      minimizeWindow: () => Promise<void>
+      maximizeWindow: () => Promise<void>
+      
+      // File operations
+      openFile: () => Promise<string>
+      saveFile: (data: any) => Promise<boolean>
+      
+      // System info
+      platform: string
+      version: string
+      
+      // App events
+      onAppReady: (callback: () => void) => void
+      removeAllListeners: (channel: string) => void
+    }
+  }
+}
+
+// Extend CSS properties to include Webkit App Region
+declare module 'react' {
+  interface CSSProperties {
+    WebkitAppRegion?: 'drag' | 'no-drag'
+    webkitAppRegion?: 'drag' | 'no-drag'
   }
 }
 

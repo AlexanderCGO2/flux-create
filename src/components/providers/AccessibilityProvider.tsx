@@ -27,56 +27,58 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
 
   // Detect user preferences
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Check for reduced motion preference
-      const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-      setIsReducedMotion(mediaQuery.matches);
-      
-      const handleMotionChange = (e: MediaQueryListEvent) => {
-        setIsReducedMotion(e.matches);
-      };
-      
-      mediaQuery.addEventListener('change', handleMotionChange);
-      
-      // Check for high contrast preference
-      const contrastQuery = window.matchMedia('(prefers-contrast: high)');
-      setIsHighContrast(contrastQuery.matches);
-      
-      const handleContrastChange = (e: MediaQueryListEvent) => {
-        setIsHighContrast(e.matches);
-      };
-      
-      contrastQuery.addEventListener('change', handleContrastChange);
-      
-      // Detect screen reader
-      const detectScreenReader = () => {
-        // Check for common screen reader indicators
-        const hasAriaLive = document.querySelector('[aria-live]');
-        const hasScreenReaderText = document.querySelector('.sr-only');
-        const userAgent = navigator.userAgent.toLowerCase();
-        
-        const screenReaderIndicators = [
-          'nvda',
-          'jaws',
-          'dragon',
-          'voiceover',
-          'narrator'
-        ];
-        
-        const hasScreenReaderUA = screenReaderIndicators.some(indicator => 
-          userAgent.includes(indicator)
-        );
-        
-        setIsScreenReaderActive(hasScreenReaderUA || !!hasAriaLive || !!hasScreenReaderText);
-      };
-      
-      detectScreenReader();
-      
-      return () => {
-        mediaQuery.removeEventListener('change', handleMotionChange);
-        contrastQuery.removeEventListener('change', handleContrastChange);
-      };
+    if (typeof window === 'undefined') {
+      return;
     }
+
+    // Check for reduced motion preference
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setIsReducedMotion(mediaQuery.matches);
+    
+    const handleMotionChange = (e: MediaQueryListEvent) => {
+      setIsReducedMotion(e.matches);
+    };
+    
+    mediaQuery.addEventListener('change', handleMotionChange);
+    
+    // Check for high contrast preference
+    const contrastQuery = window.matchMedia('(prefers-contrast: high)');
+    setIsHighContrast(contrastQuery.matches);
+    
+    const handleContrastChange = (e: MediaQueryListEvent) => {
+      setIsHighContrast(e.matches);
+    };
+    
+    contrastQuery.addEventListener('change', handleContrastChange);
+    
+    // Detect screen reader
+    const detectScreenReader = () => {
+      // Check for common screen reader indicators
+      const hasAriaLive = document.querySelector('[aria-live]');
+      const hasScreenReaderText = document.querySelector('.sr-only');
+      const userAgent = navigator.userAgent.toLowerCase();
+      
+      const screenReaderIndicators = [
+        'nvda',
+        'jaws',
+        'dragon',
+        'voiceover',
+        'narrator'
+      ];
+      
+      const hasScreenReaderUA = screenReaderIndicators.some(indicator => 
+        userAgent.includes(indicator)
+      );
+      
+      setIsScreenReaderActive(hasScreenReaderUA || !!hasAriaLive || !!hasScreenReaderText);
+    };
+    
+    detectScreenReader();
+    
+    return () => {
+      mediaQuery.removeEventListener('change', handleMotionChange);
+      contrastQuery.removeEventListener('change', handleContrastChange);
+    };
   }, []);
 
   // Apply accessibility styles
@@ -124,8 +126,8 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
       }, 100);
       
       // Also use Electron API if available
-      if (typeof window !== 'undefined' && window.electronAPI) {
-        window.electronAPI.accessibility.announceToScreenReader(message);
+      if (typeof window !== 'undefined' && window.electronAPI && 'accessibility' in window.electronAPI) {
+        (window.electronAPI as any).accessibility?.announceToScreenReader?.(message);
       }
       
       console.log('Screen reader announcement:', message);
@@ -170,7 +172,7 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
       {/* Accessibility status and controls */}
       <div className="sr-only">
         <div id="accessibility-status">
-          Flux Create - Accessible AI Image Editor
+          CRAISEE Desk - Accessible AI Image Editor
           {isScreenReaderActive && ' - Screen reader detected'}
           {isHighContrast && ' - High contrast mode active'}
           {isReducedMotion && ' - Reduced motion active'}

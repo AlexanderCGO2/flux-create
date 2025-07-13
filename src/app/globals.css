@@ -8,15 +8,59 @@
   --font-lexend: 'Lexend', system-ui, sans-serif;
 }
 
-/* Glass overlay base styles */
+/* Force visibility for main interface components */
+.main-interface,
+.main-interface * {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure buttons are always clickable */
+button {
+  pointer-events: auto !important;
+  z-index: 1 !important;
+}
+
+/* Ensure proper window dragging regions */
+[style*="WebkitAppRegion: drag"] {
+  -webkit-app-region: drag !important;
+}
+
+[style*="WebkitAppRegion: no-drag"] {
+  -webkit-app-region: no-drag !important;
+}
+
+/* Force motion components to be visible */
+[data-framer-name],
+[data-framer-component-type] {
+  opacity: 1 !important;
+}
+
 @layer base {
   * {
     @apply border-border;
   }
-  
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Glass overlay base styles */
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  
+  body {
+    @apply bg-transparent text-white;
+  }
+  
+  /* Ensure all main interface components are visible */
+  .main-interface,
+  .main-interface * {
+    opacity: 1 !important;
+    visibility: visible !important;
   }
   
   /* Scrollbar styling */
@@ -34,6 +78,69 @@
   
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-glass-300;
+  }
+  
+  /* Glass overlay states */
+  .glass-invisible {
+    @apply opacity-5;
+  }
+  
+  .glass-minimal {
+    @apply opacity-20;
+  }
+  
+  .glass-visible {
+    @apply opacity-80;
+  }
+  
+  .glass-prominent {
+    @apply opacity-90;
+  }
+
+  /* Ensure default glass overlay is visible */
+  .glass-overlay {
+    opacity: 0.8 !important;
+    visibility: visible !important;
+  }
+  
+  /* Educational mode */
+  .education-mode {
+    @apply border-l-4 border-blue-400 bg-blue-50/10;
+  }
+  
+  /* Voice feedback */
+  .voice-active {
+    @apply ring-2 ring-green-400 animate-pulse;
+  }
+  
+  /* Glass button */
+  .glass-button {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-200;
+  }
+  
+  /* Skip links for accessibility */
+  .skip-link {
+    @apply absolute top-0 left-0 z-50 p-2 bg-blue-600 text-white transform -translate-y-full focus:translate-y-0 transition-transform;
+  }
+  
+  /* Screen reader only */
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+  }
+  
+  /* High contrast mode */
+  .high-contrast {
+    @apply contrast-150 saturate-200;
+  }
+  
+  /* Reduced motion */
+  .reduce-motion * {
+    @apply animate-none transition-none;
+  }
+  
+  /* Focus styles */
+  .focus-visible:focus-visible {
+    @apply outline-2 outline-offset-2 outline-blue-400;
   }
 }
 
@@ -172,6 +279,12 @@
   
   .glass-prominent {
     @apply opacity-90;
+  }
+
+  /* Ensure default glass overlay is visible */
+  .glass-overlay {
+    opacity: 0.8 !important;
+    visibility: visible !important;
   }
   
   /* Educational mode */
@@ -314,4 +427,84 @@
   .canvas-container {
     @apply bg-white;
   }
+}
+
+/* Custom animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Webkit app region for Electron */
+.webkit-drag {
+  -webkit-app-region: drag;
+}
+
+.webkit-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* App transparency support for voice commands */
+body {
+  transition: background-color 0.5s ease;
+}
+
+.app-container {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(135deg, 
+    rgba(16, 18, 27, 0.95) 0%, 
+    rgba(24, 24, 35, 0.95) 100%);
+  transition: opacity 0.5s ease, background-color 0.5s ease;
+}
+
+.app-transparent {
+  background: rgba(16, 18, 27, 0.7) !important;
+}
+
+.app-transparent-90 {
+  background: rgba(16, 18, 27, 0.1) !important;
+}
+
+.app-transparent-80 {
+  background: rgba(16, 18, 27, 0.2) !important;
+}
+
+.app-transparent-70 {
+  background: rgba(16, 18, 27, 0.3) !important;
+}
+
+.app-transparent-60 {
+  background: rgba(16, 18, 27, 0.4) !important;
+}
+
+.app-transparent-50 {
+  background: rgba(16, 18, 27, 0.5) !important;
+}
+
+/* Glass effects for transparent backgrounds */
+.glass-enhanced {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Voice command feedback */
+.voice-command-active {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.5);
 }

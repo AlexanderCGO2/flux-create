@@ -40,18 +40,22 @@ export function VoiceProvider({ children }: VoiceProviderProps) {
           console.log('Voice recognition supported');
           
           // Announce to screen reader
-          if (typeof window !== 'undefined' && window.electronAPI) {
-            window.electronAPI.accessibility.announceToScreenReader(
-              'Flux Create voice control system initialized'
+          if (typeof window !== 'undefined' && window.electronAPI && 'accessibility' in window.electronAPI) {
+            (window.electronAPI as any).accessibility?.announceToScreenReader?.(
+              'CRAISEE VoiceEditor voice control system initialized'
             );
           }
           
-          // Provide welcome voice feedback
-          setTimeout(() => {
+          // Provide welcome voice feedback (avoid state updates during render)
+          const timer = setTimeout(() => {
+            if (voiceHook.isSupported) {
             voiceHook.speakResponse(
-              'Welcome to Flux Create. Voice control is ready. Say "help" for available commands.'
+                'Welcome to CRAISEE Experiments Vol 1 VoiceEditor. Voice control is ready. Say "help" for available commands.'
             );
+            }
           }, 2000);
+          
+          return () => clearTimeout(timer);
         } else {
           console.warn('Voice recognition not supported');
         }
